@@ -9,6 +9,10 @@ const t = translator({
     noOrders: 'No orders yet today.',
     menuHint: 'Changes are pushed to every guest’s phone instantly. Mark items sold out when you run out.',
     item: 'Item', price: 'Price', available: 'Available', priceOf: 'Price of {name}', availableOf: '{name} available',
+    photo: 'Photo', uploadPhoto: 'Upload photo', changePhoto: 'Change', removePhoto: 'Remove', uploading: 'Uploading…',
+    photoSaved: 'Photo updated for {name}', photoRemoved: 'Photo removed from {name}', removePhotoConfirm: 'Remove the photo of {name}?',
+    photoUnsupported: 'This file type is not supported. Please use a JPG, PNG or WebP photo.', photoFailed: 'Upload failed: {msg}',
+    photoHint: 'Tip: landscape or square photos with the food in the centre look best.',
     invalidPrice: 'Invalid price', backOn: '{name} is back on the menu', soldOut: '{name} marked sold out',
     tablesHint: 'Print each QR and stick it on the table. “Rotate” invalidates a code that was photographed or leaked; “Close bill” ends the table’s session after payment.',
     newTablePh: 'e.g. Patio 3', newTableAria: 'New table name', addTable: '+ Add table', printAll: 'Print all',
@@ -27,6 +31,10 @@ const t = translator({
     noOrders: '今天还没有订单。',
     menuHint: '修改会立即同步到所有顾客的手机。食材用完时请标记为售完。',
     item: '菜品', price: '价格', available: '供应中', priceOf: '{name} 的价格', availableOf: '{name} 是否供应',
+    photo: '照片', uploadPhoto: '上传照片', changePhoto: '更换', removePhoto: '删除', uploading: '上传中…',
+    photoSaved: '已更新 {name} 的照片', photoRemoved: '已删除 {name} 的照片', removePhotoConfirm: '确定删除 {name} 的照片？',
+    photoUnsupported: '不支持此文件格式，请使用 JPG、PNG 或 WebP 照片。', photoFailed: '上传失败：{msg}',
+    photoHint: '建议：使用横向或方形照片，并让食物位于画面中央。',
     invalidPrice: '价格无效', backOn: '{name} 已恢复供应', soldOut: '{name} 已标记售完',
     tablesHint: '打印二维码并贴在餐桌上。“更换”会让被拍照或外泄的旧二维码失效；“结账”会在付款后结束该桌的用餐。',
     newTablePh: '例如：户外 3', newTableAria: '新餐桌名称', addTable: '+ 添加餐桌', printAll: '全部打印',
@@ -116,11 +124,11 @@ async function menu() {
   const m = await api('/api/menu');
   const second = (o) => (getLang() === 'zh' ? o.en : o.zh);
   $('#view').replaceChildren(
-    h('p', { class: 'muted' }, t('menuHint')),
+    h('p', { class: 'muted' }, t('menuHint'), ' ', t('photoHint')),
     ...m.categories.map((c) => h('section', { class: 'card' },
       h('h2', {}, pick(c.name), h('span', { class: 'muted' }, ` · ${second(c.name)}`)),
       h('table', { class: 'grid' },
-        h('thead', {}, h('tr', {}, h('th', {}, t('item')), h('th', {}, t('price')), h('th', {}, t('available')))),
+        h('thead', {}, h('tr', {}, h('th', {}, t('photo')), h('th', {}, t('item')), h('th', {}, t('price')), h('th', {}, t('available')))),
         h('tbody', {}, m.items.filter((i) => i.categoryId === c.id).map((i) => menuRow(i, second)))))));
 }
 
@@ -143,9 +151,66 @@ function menuRow(i, second) {
     },
   });
   return h('tr', {},
+    h('td', { class: 'photo-cell' }, photoControls(i, name)),
     h('td', {}, name, h('small', { class: 'muted' }, ` ${second(i.name)}`)),
     h('td', {}, h('span', { class: 'cur' }, S.cfg.currency), price),
     h('td', {}, sw));
+}
+
+function photoControls(i, name) {
+  const input = h('input', {
+    type: 'file', accept: 'image/jpeg,image/png,image/webp,image/heic,image/heif', hidden: true,
+    onchange: async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      upBtn.disabled = true;
+      upBtn.textContent = t('uploading');
+      try {
+        const blob = await shrinkPhoto(file);
+        const res = await fetch(`/api/admin/items/${encodeURIComponent(i.id)}/photo`, {
+          method: 'POST', credentials: 'same-origin', body: blob,
+          headers: { 'Content-Type': blob.type, 'X-Requested-With': 'fetch' },
+        });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `http_${res.status}`);
+        toast(t('photoSaved', { name }), 'ok');
+        menu();
+      } catch (err) {
+        toast(err.message === 'decode' ? t('photoUnsupported') : t('photoFailed', { msg: err.message }), 'err');
+        upBtn.disabled = false;
+        upBtn.textContent = i.image ? t('changePhoto') : t('uploadPhoto');
+      }
+    },
+  });
+  const upBtn = h('button', { class: 'btn small', type: 'button', onclick: () => input.click() }, i.image ? t('changePhoto') : t('uploadPhoto'));
+  const rmBtn = i.image ? h('button', {
+    class: 'btn small ghost danger', type: 'button',
+    onclick: async () => {
+      if (!confirm(t('removePhotoConfirm', { name }))) return;
+      try { await api(`/api/admin/items/${encodeURIComponent(i.id)}/photo`, { method: 'DELETE' }); toast(t('photoRemoved', { name }), 'ok'); menu(); }
+      catch (err) { toast(err.message, 'err'); }
+    },
+  }, t('removePhoto')) : null;
+  return h('div', { class: 'photo-ctl' },
+    i.image ? h('img', { class: 'thumb', src: i.image, alt: '' }) : h('span', { class: 'thumb empty', 'aria-hidden': 'true' }),
+    h('div', { class: 'photo-btns' }, upBtn, rmBtn, input));
+}
+
+// Resize on the admin's device before uploading: a 10 MB phone photo becomes
+// ~150-300 KB, so uploads are quick and guests' menus stay fast.
+async function shrinkPhoto(file, maxSide = 1600) {
+  let bmp;
+  try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch { throw new Error('decode'); }
+  const scale = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bmp.width * scale);
+  canvas.height = Math.round(bmp.height * scale);
+  canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
+  bmp.close?.();
+  const encode = (type, q) => new Promise((r) => canvas.toBlob(r, type, q));
+  let blob = await encode('image/webp', 0.82);
+  if (!blob || blob.type !== 'image/webp') blob = await encode('image/jpeg', 0.85); // older Safari can't encode WebP
+  if (!blob) throw new Error('decode');
+  return blob;
 }
 
 // ---------------------------------------------------------------------------

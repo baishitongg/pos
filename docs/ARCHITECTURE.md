@@ -78,6 +78,7 @@ Tactics:
 | Oversized/malformed payloads | 16 KB body limit, JSON content-type required, strict schema validation |
 | Insecure deploy | Server **refuses to start in production** with default secrets or passwords |
 | Open redirect on login | `next` parameter restricted to same-site paths |
+| Malicious file upload | Admin-only; JPG/PNG/WebP only, verified by file signature (not name or header); 5 MB cap; random content-hash file names (no path traversal); served with `nosniff` and a fixed image type |
 | Demo table list leaks tokens | `/api/demo/tables` is disabled when `NODE_ENV=production` |
 
 Production additions: TLS everywhere, WAF/CDN bot protection, secrets in a secret manager, payment via a PCI-compliant hosted gateway (we never touch card data), audit log, dependency scanning.
@@ -110,7 +111,7 @@ Table session: opens on the first order, ends when admin presses "Close bill" (o
 ## 4. Roadmap after the prototype
 1. Connect PostgreSQL (`db/schema.sql`) and Redis; deploy on your domain with HTTPS.
 2. Online payment (e.g. a local gateway with FPX / e-wallet / cards) and e-receipts.
-3. Menu editor with photos (object storage + CDN, responsive WebP images).
+3. Move menu photos (already uploadable in admin) to object storage + CDN; full menu editor (add/rename dishes, options).
 4. Printer integration (ESC/POS kitchen and receipt printers), kitchen stations (drinks vs food).
 5. Multi-outlet support, staff accounts management, reports export.
 6. Offline-capable PWA (service worker) for flaky shop Wi-Fi.
