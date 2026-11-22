@@ -58,13 +58,25 @@ export const DUMMY_HASH = hashPassword(crypto.randomBytes(12).toString('hex'));
 
 // ---------------------------------------------------------------------------
 // Staff sessions: opaque random id in an HttpOnly cookie; state server-side.
-// (Production with several instances: move this Map to Redis.)
+// Saved with the app data (see store.js) so restarts and deploys don't sign
+// staff out. Only a SHA-256 of each session id is stored, so a leaked data
+// file can't be used to log in. (Several instances: move this to Redis.)
 // ---------------------------------------------------------------------------
-const sessions = new Map();
+let sessions = new Map(); // sha256(sid) -> { userId, username, role, exp }
+let persist = () => {};
+const REFRESH_MS = 3600_000; // extend sliding expiry at most once an hour
+
+export function useSessionStore(map, onChange) {
+  sessions = map;
+  persist = onChange;
+}
+
+const sidKey = (sid) => crypto.createHash('sha256').update(sid).digest('base64url');
 
 export function createSession(user) {
   const sid = crypto.randomBytes(32).toString('base64url');
-  sessions.set(sid, { userId: user.id, username: user.username, role: user.role, exp: Date.now() + config.sessionTtlMs });
+  sessions.set(sidKey(sid), { userId: user.id, username: user.username, role: user.role, exp: Date.now() + config.sessionTtlMs });
+  persist();
   return sid;
 }
 
@@ -80,17 +92,26 @@ function readCookie(req, name) {
 
 export function getSession(req) {
   const sid = readCookie(req, 'sid');
-  if (!sid) return null;
-  const s = sessions.get(sid);
+  if (!sid || sid.length > 100) return null;
+  const key = sidKey(sid);
+  const s = sessions.get(key);
   if (!s) return null;
-  if (s.exp < Date.now()) { sessions.delete(sid); return null; }
-  s.exp = Date.now() + config.sessionTtlMs; // sliding expiry
+  const now = Date.now();
+  if (s.exp < now) { sessions.delete(key); persist(); return null; }
+  if (now + config.sessionTtlMs - s.exp > REFRESH_MS) { s.exp = now + config.sessionTtlMs; persist(); } // sliding expiry
   return { ...s, sid };
 }
 
 export function destroySession(req) {
   const sid = readCookie(req, 'sid');
-  if (sid) sessions.delete(sid);
+  if (sid && sessions.delete(sidKey(sid))) persist();
+}
+
+// Signs a user out everywhere (used when their password changes).
+export function destroyUserSessions(userId) {
+  let changed = false;
+  for (const [k, s] of sessions) if (s.userId === userId) { sessions.delete(k); changed = true; }
+  if (changed) persist();
 }
 
 export function sessionCookie(req, sid, maxAgeMs) {

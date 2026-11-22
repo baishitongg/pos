@@ -8,7 +8,7 @@ import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import { seedData } from './seed.js';
 import { config } from './config.js';
-import { hashPassword, verifyPassword } from './security.js';
+import { hashPassword, verifyPassword, useSessionStore, destroyUserSessions } from './security.js';
 
 const newId = (prefix) => `${prefix}_${crypto.randomBytes(8).toString('base64url')}`;
 const dayFmt = new Intl.DateTimeFormat('en-CA', { timeZone: config.restaurant.timezone, year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -34,12 +34,21 @@ class Store {
     } else {
       this.state = seedData();
     }
+    // Staff sign-ins survive restarts; expired ones are dropped on load.
+    const now = Date.now();
+    const sessions = new Map(Object.entries(this.state.sessions || {}).filter(([, v]) => v.exp > now));
+    useSessionStore(sessions, () => { this.state.sessions = Object.fromEntries(sessions); this.save(); });
+    this.state.sessions = Object.fromEntries(sessions);
+
     // The .env passwords are the source of truth for the two built-in staff
     // accounts: change ADMIN_PASSWORD / KITCHEN_PASSWORD and restart to rotate.
     for (const [username, role, password] of [['admin', 'admin', config.adminPassword], ['kitchen', 'kitchen', config.kitchenPassword]]) {
       const user = this.state.users.find((u) => u.username === username);
       if (!user) this.state.users.push({ id: newId('usr'), username, role, hash: hashPassword(password) });
-      else if (!verifyPassword(password, user.hash)) user.hash = hashPassword(password);
+      else if (!verifyPassword(password, user.hash)) {
+        user.hash = hashPassword(password);
+        destroyUserSessions(user.id); // new password → sign out every device on that account
+      }
     }
     this.reindex();
     this.flushSync();
