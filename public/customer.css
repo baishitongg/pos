@@ -246,3 +246,7 @@ textarea:focus { outline: none; border-color: var(--ink); }
 .sheet-foot .btn.primary::after { display: none; }
 .summary { column-gap: 0; }
 .summary dd { padding-left: 12px; }
+
+/* Clearer dividers between dishes (the 10% hairline was too faint on many phones) */
+.item { border-bottom: 1px solid rgba(28, 43, 36, .22); }
+.cat h2 { padding-bottom: 14px; margin-bottom: 0; border-bottom: 1px solid rgba(28, 43, 36, .22); }
