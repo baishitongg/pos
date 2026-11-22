@@ -159,7 +159,8 @@ Push anything to `main`, or open **Actions → Check & deploy → Run workflow**
    ```bash
    apt-get install -y nginx certbot python3-certbot-nginx   # skip if nginx already runs the spa site
    cp /opt/pos/app/deploy/nginx-pos.conf /etc/nginx/sites-available/pos
-   nano /etc/nginx/sites-available/pos        # replace order.example.com with your domain
+   nano /etc/nginx/sites-available/pos        # replace order.example.com with your domain,
+                                              # and 3100 with the PORT in /opt/pos/.env
    ln -s /etc/nginx/sites-available/pos /etc/nginx/sites-enabled/pos
    nginx -t && systemctl reload nginx
    certbot --nginx -d order.yourdomain.com
@@ -179,6 +180,7 @@ This adds a new site to nginx without touching the existing spa website.
 | Live logs | `journalctl -u pos -f` |
 | Restart | `systemctl restart pos` |
 | Manual deploy of latest main | `sudo -u deploy bash /opt/pos/app/deploy/deploy.sh` |
+| Change staff passwords | edit `ADMIN_PASSWORD` / `KITCHEN_PASSWORD` in `/opt/pos/.env`, then `systemctl restart pos` |
 | Back up data | `tar czf ~/pos-backup-$(date +%F).tgz /opt/pos/data` |
 
 ## Notes

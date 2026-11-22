@@ -8,7 +8,7 @@ import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import { seedData } from './seed.js';
 import { config } from './config.js';
-import { hashPassword } from './security.js';
+import { hashPassword, verifyPassword } from './security.js';
 
 const newId = (prefix) => `${prefix}_${crypto.randomBytes(8).toString('base64url')}`;
 const dayFmt = new Intl.DateTimeFormat('en-CA', { timeZone: config.restaurant.timezone, year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -34,11 +34,12 @@ class Store {
     } else {
       this.state = seedData();
     }
-    if (!this.state.users.length) {
-      this.state.users.push(
-        { id: newId('usr'), username: 'admin', role: 'admin', hash: hashPassword(config.adminPassword) },
-        { id: newId('usr'), username: 'kitchen', role: 'kitchen', hash: hashPassword(config.kitchenPassword) },
-      );
+    // The .env passwords are the source of truth for the two built-in staff
+    // accounts: change ADMIN_PASSWORD / KITCHEN_PASSWORD and restart to rotate.
+    for (const [username, role, password] of [['admin', 'admin', config.adminPassword], ['kitchen', 'kitchen', config.kitchenPassword]]) {
+      const user = this.state.users.find((u) => u.username === username);
+      if (!user) this.state.users.push({ id: newId('usr'), username, role, hash: hashPassword(password) });
+      else if (!verifyPassword(password, user.hash)) user.hash = hashPassword(password);
     }
     this.reindex();
     this.flushSync();
