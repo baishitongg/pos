@@ -1,0 +1,19 @@
+{
+  "name": "qr-ordering",
+  "version": "0.1.0",
+  "private": true,
+  "description": "QR-code table ordering system (prototype): customer ordering, kitchen display, admin console.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.9"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "dev": "node --env-file-if-exists=.env --watch-path=src --watch-path=public src/server.js",
+    "bench": "node scripts/bench.js",
+    "reset": "rm -rf data"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4"
+  }
+}
