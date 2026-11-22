@@ -1,0 +1,30 @@
+# systemd service for the ordering app.
+# Install: sudo cp /opt/pos/app/deploy/pos.service /etc/systemd/system/pos.service
+[Unit]
+Description=QR table ordering (pos)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+WorkingDirectory=/opt/pos/app
+EnvironmentFile=/opt/pos/.env
+ExecStart=/usr/bin/node src/server.js
+Restart=always
+RestartSec=2
+# Give the app time to flush data on shutdown (it handles SIGTERM).
+TimeoutStopSec=15
+# Cap memory so the app can never starve other sites on this droplet.
+MemoryMax=400M
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/pos/data
+
+[Install]
+WantedBy=multi-user.target

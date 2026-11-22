@@ -1,0 +1,78 @@
+# Checks every push, and deploys main to the DigitalOcean droplet.
+# One-time setup: see docs/DEPLOY.md. Deploys stay switched off until the
+# repository variable DEPLOY_ENABLED is set to "true".
+name: Check & deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: # "Run workflow" button for manual deploys
+
+permissions:
+  contents: read
+
+# Never run two deploys at once; a newer push waits for the running one.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Syntax check
+        run: for f in src/*.js public/*.js scripts/*.js; do node --check "$f"; done
+
+      - name: Smoke test (start server, hit key endpoints)
+        run: |
+          PORT=3999 LOG_REQUESTS=0 DATA_FILE="$RUNNER_TEMP/ci/db.json" node src/server.js > "$RUNNER_TEMP/server.log" 2>&1 &
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:3999/readyz > /dev/null && break; sleep 0.5; done
+          curl -fs http://127.0.0.1:3999/readyz
+          curl -fs http://127.0.0.1:3999/api/menu > /dev/null
+          curl -fs http://127.0.0.1:3999/kitchen > /dev/null
+          echo "Smoke test passed"
+
+      - name: Server log (on failure)
+        if: failure()
+        run: cat "$RUNNER_TEMP/server.log" || true
+
+  deploy:
+    needs: check
+    # Only real pushes to main (not pull requests), and only once set up.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - name: Set up SSH key
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # Pinned host key: refuse to connect if the server's identity changes.
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Deploy on server
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+        run: ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes "$USER@$HOST" "bash /opt/pos/app/deploy/deploy.sh ${GITHUB_SHA}"
+
+      - name: Remove SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

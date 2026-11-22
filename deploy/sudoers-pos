@@ -1,0 +1,4 @@
+# Lets the "deploy" user restart ONLY the ordering app and read its logs.
+# Install: sudo install -m 440 /opt/pos/app/deploy/sudoers-pos /etc/sudoers.d/pos
+#          sudo visudo -c     (must say "parsed OK")
+deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart pos, /usr/bin/journalctl -u pos -n 40 --no-pager

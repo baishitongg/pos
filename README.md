@@ -48,6 +48,9 @@ public/           guest app (order.*), kitchen.*, admin.*, login.*, shared CSS/J
 db/schema.sql     PostgreSQL schema for production
 ```
 
+## Deploying
+Pushes to `main` are checked and auto-deployed to the server by GitHub Actions. One-time setup: **[docs/DEPLOY.md](docs/DEPLOY.md)**.
+
 ## Production checklist
 - Set `NODE_ENV=production`, a random `QR_SECRET`, and new staff passwords (the server refuses to start otherwise).
 - Put it behind HTTPS on your domain and set `PUBLIC_URL` + `TRUST_PROXY=1`.
