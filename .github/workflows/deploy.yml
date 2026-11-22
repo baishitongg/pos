@@ -67,7 +67,12 @@ jobs:
           # can't break it.
           BEGIN='-----BEGIN OPENSSH PRIVATE KEY-----'
           END='-----END OPENSSH PRIVATE KEY-----'
-          BODY="$(printf '%s' "$SSH_KEY" | tr -d '\r' | sed -e "s/$BEGIN//" -e "s/$END//" | tr -d ' \t\n')"
+          RAW="$(printf '%s' "$SSH_KEY" | sed -e "s/$BEGIN//" -e "s/$END//")"
+          # A key body only ever contains base64 characters; drop anything else
+          # (invisible non-breaking spaces, stray prompt characters, etc.).
+          BODY="$(printf '%s' "$RAW" | LC_ALL=C tr -cd 'A-Za-z0-9+/=')"
+          STRAY="$(printf '%s' "$RAW" | LC_ALL=C tr -d 'A-Za-z0-9+/= \t\r\n' | wc -c)"
+          [ "$STRAY" -gt 0 ] && echo "Removed $STRAY stray byte(s) from the pasted key"
           { echo "$BEGIN"; printf '%s\n' "$BODY" | fold -w 70; echo "$END"; } > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           if ! ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null 2>&1; then
