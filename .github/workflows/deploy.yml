@@ -80,7 +80,7 @@ jobs:
             echo "::error::DEPLOY_SSH_KEY is not a valid private key. Re-copy it from 'cat' in a plain terminal."
             printf '%s' "$SSH_KEY" | grep -q -- "$BEGIN" && echo "BEGIN line: found" || echo "BEGIN line: MISSING"
             printf '%s' "$SSH_KEY" | grep -q -- "$END" && echo "END line: found" || echo "END line: MISSING"
-            echo "Key body length: ${#BODY} characters (an ed25519 key is usually about 380-420)"
+            echo "Key body length: ${#BODY} characters (a valid deploy key is a multiple of 4, e.g. 336)"
             exit 1
           fi
           # Pinned host key: refuse to connect if the server's identity changes.

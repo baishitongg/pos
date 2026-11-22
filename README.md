@@ -21,7 +21,7 @@ Open http://localhost:3000. In development the landing page lists demo table lin
 | Kitchen display | `/kitchen` | `kitchen` / `kitchen123` |
 | Admin console | `/admin` | `admin` / `admin123` |
 
-**Languages:** every screen supports English and 中文. It follows the phone or browser language on first visit, and the EN/中文 button switches it (remembered per device). Dish names show in both languages on the kitchen display. To add another language (e.g. Bahasa Melayu), add a `ms` block to each page's dictionary and a `ms` name to each menu item.
+**Languages:** every screen supports English and 中文. It opens in 中文 by default, and the EN/中文 button switches it (remembered per device). Dish names show in both languages on the kitchen display. To add another language (e.g. Bahasa Melayu), add a `ms` block to each page's dictionary and a `ms` name to each menu item.
 
 **Dish photos:** Admin → Menu → *Upload photo*. Photos are resized on the uploading device (max 1600 px, WebP/JPEG) before upload, then shown in the guest menu list and at the top of the dish details. Files are stored in `data/uploads/` (not committed to git).
 

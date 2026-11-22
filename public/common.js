@@ -85,7 +85,8 @@ export function uuid() {
 // Language (EN / 中文). One setting shared by every screen on this device.
 // ---------------------------------------------------------------------------
 export function getLang() {
-  return ls.get('lang', navigator.language?.toLowerCase().startsWith('zh') ? 'zh' : 'en');
+  // Chinese by default; a guest's EN/中文 choice is remembered on their device.
+  return ls.get('lang', 'zh');
 }
 export function setLang(l) {
   ls.set('lang', l);
