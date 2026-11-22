@@ -1,23 +1,23 @@
-import { $, h, api, toast, ls, minutesSince, translator, pick, getLang, langButton } from './common.js';
+import { $, h, api, toast, ls, minutesSince, translator, pick, getLang, langButton, fill } from './common.js';
 
 const t = translator({
   en: {
     title: 'Kitchen', live: 'Live', reconnecting: 'Reconnecting…', connecting: 'Connecting…',
-    soundOn: '🔔 Sound on', soundOff: '🔕 Sound off', admin: 'Admin', signOut: 'Sign out',
+    soundOn: 'Sound on', soundOff: 'Sound off', admin: 'Admin', signOut: 'Sign out',
     colNew: 'New', colPreparing: 'Preparing', colReady: 'Ready to serve',
     start: 'Start cooking', markReady: 'Mark ready', served: 'Served', cancel: 'Cancel', back: 'Move back one step',
     nothing: 'Nothing here', done: 'Done', minutesTitle: 'Minutes since ordered',
     cancelConfirm: 'Cancel order #{no} for {table}?', conflict: 'Order was already updated on another screen.', failed: 'Failed: {msg}',
-    waiter: '🙋 Call waiter', bill: '🧾 Bill please', water: '💧 Water',
+    waiter: 'Call waiter', bill: 'Bill please', water: 'Water',
   },
   zh: {
     title: '厨房', live: '在线', reconnecting: '重新连接中…', connecting: '连接中…',
-    soundOn: '🔔 提示音开', soundOff: '🔕 提示音关', admin: '管理后台', signOut: '退出',
+    soundOn: '提示音：开', soundOff: '提示音：关', admin: '管理后台', signOut: '退出',
     colNew: '新订单', colPreparing: '制作中', colReady: '待上菜',
     start: '开始制作', markReady: '完成', served: '已上菜', cancel: '取消', back: '退回上一步',
     nothing: '暂无订单', done: '已处理', minutesTitle: '下单后经过的分钟数',
     cancelConfirm: '确定取消 {table} 的订单 #{no}？', conflict: '该订单已在其他屏幕更新。', failed: '操作失败：{msg}',
-    waiter: '🙋 呼叫服务员', bill: '🧾 结账', water: '💧 要水',
+    waiter: '呼叫服务员', bill: '结账', water: '要水',
   },
 });
 
@@ -86,7 +86,7 @@ function rerender() {
 
 function renderShell() {
   document.title = t('title');
-  $('#app').replaceChildren(
+  fill($('#app'), 
     h('header', { class: 'kds-top' },
       h('h1', {}, t('title')),
       h('span', { id: 'clock', class: 'clock' }),
@@ -103,7 +103,7 @@ function renderShell() {
 
 function renderRequests() {
   const list = [...S.requests.values()].sort((a, b) => a.createdAt - b.createdAt);
-  $('#requests').replaceChildren(...list.map((r) => h('div', { class: `req ${r.type}` },
+  fill($('#requests'), ...list.map((r) => h('div', { class: `req ${r.type}` },
     h('strong', {}, tableName(r.tableName)), h('span', {}, t(r.type)), h('span', { class: 'age' }, `${minutesSince(r.createdAt)}m`),
     h('button', { class: 'btn small', onclick: () => api(`/api/staff/requests/${r.id}/resolve`, { method: 'POST' }).catch((e) => toast(e.message, 'err')) }, t('done')))));
 }
@@ -116,7 +116,7 @@ function tableName(name) {
 
 function renderBoard() {
   const orders = [...S.orders.values()].sort((a, b) => a.createdAt - b.createdAt);
-  $('#board').replaceChildren(...COLS.map((c) => {
+  fill($('#board'), ...COLS.map((c) => {
     const list = orders.filter((o) => o.status === c.status);
     return h('section', { class: `col ${c.status}`, 'aria-label': t(c.title) },
       h('h2', {}, t(c.title), h('span', { class: 'count' }, String(list.length))),

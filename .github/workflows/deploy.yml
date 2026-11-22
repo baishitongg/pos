@@ -62,8 +62,22 @@ jobs:
           KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          # Rebuild the key from its base64 body, so copy-paste damage (indented
+          # or wrapped lines, joined lines, Windows line endings, stray spaces)
+          # can't break it.
+          BEGIN='-----BEGIN OPENSSH PRIVATE KEY-----'
+          END='-----END OPENSSH PRIVATE KEY-----'
+          BODY="$(printf '%s' "$SSH_KEY" | tr -d '\r' | sed -e "s/$BEGIN//" -e "s/$END//" | tr -d ' \t\n')"
+          { echo "$BEGIN"; printf '%s\n' "$BODY" | fold -w 70; echo "$END"; } > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+          if ! ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null 2>&1; then
+            # Safe diagnostics only — never prints the key itself.
+            echo "::error::DEPLOY_SSH_KEY is not a valid private key. Re-copy it from 'cat' in a plain terminal."
+            printf '%s' "$SSH_KEY" | grep -q -- "$BEGIN" && echo "BEGIN line: found" || echo "BEGIN line: MISSING"
+            printf '%s' "$SSH_KEY" | grep -q -- "$END" && echo "END line: found" || echo "END line: MISSING"
+            echo "Key body length: ${#BODY} characters (an ed25519 key is usually about 380-420)"
+            exit 1
+          fi
           # Pinned host key: refuse to connect if the server's identity changes.
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
 

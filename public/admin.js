@@ -1,4 +1,4 @@
-import { $, h, api, moneyFormatter, toast, translator, pick, getLang, langButton } from './common.js';
+import { $, h, api, moneyFormatter, toast, translator, pick, getLang, langButton, fill } from './common.js';
 
 const t = translator({
   en: {
@@ -73,7 +73,7 @@ async function boot() {
 
 function renderShell() {
   document.title = t('title');
-  $('#app').replaceChildren(
+  fill($('#app'), 
     h('header', { class: 'adm-top' },
       h('h1', {}, S.cfg.name),
       h('nav', { class: 'tabs', role: 'tablist' }, TABS.map((id) => h('a', { href: `#${id}`, role: 'tab', id: `tab-${id}` }, t(id)))),
@@ -98,7 +98,7 @@ async function dashboard() {
   const maxQty = Math.max(1, ...s.topItems.map((i) => i.qty));
   const firstHour = s.byHour.findIndex((x) => x > 0);
   const hours = s.byHour.map((n, hr) => ({ n, hr })).filter(({ hr }) => hr >= Math.min(firstHour < 0 ? 10 : firstHour, 10) && hr <= 23);
-  $('#view').replaceChildren(
+  fill($('#view'), 
     h('div', { class: 'kpis' },
       kpi(t('revenue'), money(s.revenue)),
       kpi(t('orderCount'), String(s.orders)),
@@ -123,7 +123,7 @@ const kpi = (label, value) => h('div', { class: 'kpi' }, h('span', {}, label), h
 async function menu() {
   const m = await api('/api/menu');
   const second = (o) => (getLang() === 'zh' ? o.en : o.zh);
-  $('#view').replaceChildren(
+  fill($('#view'), 
     h('p', { class: 'muted' }, t('menuHint'), ' ', t('photoHint')),
     ...m.categories.map((c) => h('section', { class: 'card' },
       h('h2', {}, pick(c.name), h('span', { class: 'muted' }, ` · ${second(c.name)}`)),
@@ -217,7 +217,7 @@ async function shrinkPhoto(file, maxSide = 1600) {
 async function tables() {
   const { tables } = await api('/api/admin/tables');
   const name = h('input', { placeholder: t('newTablePh'), maxlength: '40', 'aria-label': t('newTableAria') });
-  $('#view').replaceChildren(
+  fill($('#view'), 
     h('div', { class: 'row-between' },
       h('p', { class: 'muted' }, t('tablesHint')),
       h('form', { class: 'inline', onsubmit: async (e) => { e.preventDefault(); try { await api('/api/admin/tables', { method: 'POST', body: { name: name.value.trim() || undefined } }); tables(); } catch (err) { toast(err.message, 'err'); } } },
@@ -246,7 +246,7 @@ async function act(tb, action, question) {
 async function orders() {
   const { orders } = await api('/api/staff/orders?scope=today');
   const fmt = new Intl.DateTimeFormat(getLang() === 'zh' ? 'zh-CN' : S.cfg.locale, { hour: 'numeric', minute: '2-digit', timeZone: S.cfg.timezone });
-  $('#view').replaceChildren(h('section', { class: 'card' },
+  fill($('#view'), h('section', { class: 'card' },
     h('h2', {}, t('todaysOrders', { n: orders.length })),
     orders.length ? h('table', { class: 'grid' },
       h('thead', {}, h('tr', {}, ['colNo', 'colTime', 'colTable', 'colItems', 'colTotal', 'colStatus', 'colPaid'].map((x) => h('th', {}, t(x))))),

@@ -1,4 +1,4 @@
-import { $, h, api, apiRetry, moneyFormatter, toast, ls, uuid, getLang, setLang } from './common.js';
+import { $, h, api, apiRetry, moneyFormatter, toast, ls, uuid, getLang, setLang, fill } from './common.js';
 
 const token = location.pathname.split('/')[2] || '';
 const T = encodeURIComponent(decodeURIComponent(token));
@@ -104,7 +104,7 @@ async function boot() {
     if (S.pendingKey && S.cart.length) placeOrder(); // resume an order interrupted by a dropped connection
   } catch (err) {
     if (err.status === 404) return fatal();
-    $('#app').replaceChildren(h('div', { class: 'fatal' },
+    fill($('#app'), h('div', { class: 'fatal' },
       h('p', { class: 'eyebrow' }, h('span', { class: 'dot' }), S.cfg?.name || ''), h('h1', {}, t('connProblem')),
       h('p', {}, t('connSub')),
       h('button', { class: 'btn primary', onclick: () => location.reload() }, t('retry'))));
@@ -113,7 +113,7 @@ async function boot() {
 
 function fatal() {
   document.querySelectorAll('dialog[open]').forEach((d) => d.close());
-  $('#app').replaceChildren(h('div', { class: 'fatal' },
+  fill($('#app'), h('div', { class: 'fatal' },
     h('p', { class: 'eyebrow' }, h('span', { class: 'dot' }), 'QR'), h('h1', {}, t('invalid')), h('p', {}, t('invalidSub'))));
   $('#app').removeAttribute('aria-busy');
 }
@@ -132,7 +132,7 @@ function renderShell() {
   document.title = `${S.cfg.name} · ${tableLabel()}`;
   const app = $('#app');
   app.removeAttribute('aria-busy');
-  app.replaceChildren(
+  fill(app, 
     h('header', { class: 'top' },
       h('div', { class: 'masthead' },
         h('p', { class: 'eyebrow' }, h('span', { class: 'dot', 'aria-hidden': 'true' }), `${tableLabel()} · ${t('welcome')}`),
@@ -185,9 +185,9 @@ function renderMenu() {
       c.items.map((i) => itemRow(i, qtyInCart(i.id), c.id === 'popular'))));
   });
   if (!sections.length) sections.push(h('p', { class: 'empty' }, t('noResults')));
-  $('#list').replaceChildren(...sections);
+  fill($('#list'), ...sections);
 
-  $('#chips').replaceChildren(...cats.map((c, idx) => h('a', {
+  fill($('#chips'), ...cats.map((c, idx) => h('a', {
     href: `#cat-${c.id}`, class: idx === 0 ? 'chip active' : 'chip', dataset: { cat: c.id },
     onclick: (e) => { e.preventDefault(); const top = document.getElementById(`cat-${c.id}`).getBoundingClientRect().top + scrollY - 118; window.scrollTo({ top, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); },
   }, tx(c.name))));
@@ -281,7 +281,7 @@ function openItem(item) {
     renderCartBar(true);
   });
 
-  dlg.replaceChildren(
+  fill(dlg, 
     item.image
       ? h('div', { class: 'sheet-hero' }, h('img', { src: item.image, alt: '' }),
         h('button', { class: 'x', type: 'button', 'aria-label': t('close'), onclick: () => dlg.close() }, '✕'))
@@ -318,14 +318,14 @@ function renderCartBar(bump = false) {
   const wrap = $('#cartbar');
   if (!wrap) return;
   const n = cartCount();
-  if (!n || S.view !== 'menu') { wrap.replaceChildren(); document.body.classList.remove('has-cart'); return; }
+  if (!n || S.view !== 'menu') { fill(wrap); document.body.classList.remove('has-cart'); return; }
   document.body.classList.add('has-cart');
   const { subtotal } = totals(cartLines());
   const bar = h('button', { class: `cartbar${bump ? ' bump' : ''}`, onclick: openCart },
     h('span', { class: 'count' }, n === 1 ? t('itemN') : t('itemsN', { n })),
     h('span', { class: 'label' }, t('viewCart')),
     h('span', { class: 'sum' }, money(subtotal)));
-  wrap.replaceChildren(bar);
+  fill(wrap, bar);
 }
 
 function openCart() {
@@ -338,7 +338,7 @@ function renderCart() {
   const lines = cartLines();
   const tt = totals(lines);
   if (!lines.length) {
-    dlg.replaceChildren(h('div', { class: 'sheet-body center' }, h('p', { class: 'empty' }, t('empty')),
+    fill(dlg, h('div', { class: 'sheet-body center' }, h('p', { class: 'empty' }, t('empty')),
       h('button', { class: 'btn', onclick: () => dlg.close() }, t('close'))));
     return;
   }
@@ -352,7 +352,7 @@ function renderCart() {
     if (!S.cart.length) dlg.close();
   };
 
-  dlg.replaceChildren(
+  fill(dlg, 
     h('div', { class: 'sheet-head' },
       h('h2', { id: 'cartSheetTitle' }, t('yourOrder'), h('span', { class: 'muted' }, ` · ${tableLabel()}`)),
       h('button', { class: 'x plain', type: 'button', 'aria-label': t('close'), onclick: () => dlg.close() }, '✕')),
@@ -364,7 +364,7 @@ function renderCart() {
           l.note ? h('div', { class: 'note' }, `“${l.note}”`) : null,
           h('div', { class: 'price' }, money(l.lineTotal))),
         h('div', { class: 'stepper small' },
-          h('button', { class: 'step', 'aria-label': `${t('remove')} 1 ${tx(l.item.name)}`, onclick: () => changeQty(l.key, -1) }, l.qty === 1 ? '🗑' : '−'),
+          h('button', { class: 'step', 'aria-label': `${t('remove')} 1 ${tx(l.item.name)}`, onclick: () => changeQty(l.key, -1) }, l.qty === 1 ? '×' : '−'),
           h('span', { class: 'qty' }, String(l.qty)),
           h('button', { class: 'step', 'aria-label': `${t('add')} 1 ${tx(l.item.name)}`, onclick: () => changeQty(l.key, 1) }, '+'))))),
       h('dl', { class: 'summary' },
@@ -465,7 +465,7 @@ function renderOrders() {
       h('footer', {}, h('span', {}, t('total')), h('strong', {}, money(o.total))));
   });
 
-  view.replaceChildren(
+  fill(view, 
     S.orders.length ? h('div', { class: 'orders' }, cards) : h('div', { class: 'empty-state' },
       h('span', { class: 'ornament', 'aria-hidden': 'true' }), h('h2', {}, t('noOrders')), h('p', { class: 'muted' }, t('noOrdersSub')),
       h('button', { class: 'btn primary', onclick: () => setView('menu') }, t('menu'))),

@@ -1,4 +1,4 @@
-import { $, h, api, translator, langButton } from './common.js';
+import { $, h, api, translator, langButton, fill } from './common.js';
 
 const t = translator({
   en: { title: 'Scan the QR code on your table to order', sub: 'Each table has its own code. Your order goes straight to the kitchen.',
@@ -11,7 +11,7 @@ let demoTables = null;
 
 function render() {
   document.title = t('title');
-  $('#app').replaceChildren(
+  fill($('#app'), 
     h('div', { class: 'landing-lang' }, langButton(render)),
     h('p', { class: 'eyebrow' }, 'QR · ORDER'),
     h('h1', {}, t('title')),

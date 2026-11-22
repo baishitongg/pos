@@ -108,3 +108,9 @@ export function langButton(onChange, cls = 'btn ghost lang') {
   }, getLang() === 'en' ? '中文' : 'EN');
 }
 document.documentElement.lang = getLang() === 'zh' ? 'zh-Hans' : 'en';
+
+// Replace an element's content, skipping null/false parts (so a hidden
+// section never shows up as the text "null").
+export function fill(el, ...children) {
+  el.replaceChildren(...children.flat(Infinity).filter((c) => c != null && c !== false));
+}
